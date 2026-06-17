@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moment of Reflection</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      color: #fff;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 13px;
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #555;
+      margin-bottom: 60px;
+    }
+
+    .yin-yang {
+      width: 200px;
+      height: 200px;
+      animation: spin 8s linear infinite;
+      cursor: pointer;
+    }
+
+    .yin-yang:hover {
+      animation-play-state: paused;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    p {
+      margin-top: 60px;
+      font-size: 11px;
+      font-weight: 300;
+      letter-spacing: 0.2em;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Moment of Reflection</h1>
+
+  <svg class="yin-yang" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <!-- Dark half -->
+    <path d="M100,10 A90,90 0 0,1 100,190 A45,45 0 0,1 100,100 A45,45 0 0,0 100,10 Z" fill="#1a1a1a"/>
+    <!-- Light half -->
+    <path d="M100,10 A90,90 0 0,0 100,190 A45,45 0 0,0 100,100 A45,45 0 0,1 100,10 Z" fill="#f0f0f0"/>
+    <!-- Light dot in dark -->
+    <circle cx="100" cy="55" r="15" fill="#f0f0f0"/>
+    <!-- Dark dot in light -->
+    <circle cx="100" cy="145" r="15" fill="#1a1a1a"/>
+    <!-- Outer ring -->
+    <circle cx="100" cy="100" r="90" fill="none" stroke="#2a2a2a" stroke-width="1"/>
+  </svg>
+
+  <p>hover to pause</p>
+</body>
+</html>
