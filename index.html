@@ -59,10 +59,28 @@
       transition: color 0.15s;
     }
     .picker button.active { color: #fff; }
+    .inf-btn {
+      position: fixed;
+      top: 14px;
+      right: 18px;
+      background: none;
+      border: none;
+      color: #4d4d4d;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 6px;
+      transition: color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: inherit;
+    }
+    .inf-btn.active { color: #fff; }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
+  <button class="inf-btn" id="infBtn">∞</button>
   <div class="picker">
     <button data-sound="voice">Voice</button>
     <button class="active" data-sound="saxophone">Sax</button>
@@ -80,6 +98,9 @@ let lastAngle = null;
 let lastDragTime = 0;
 let selectedSound = 'saxophone';
 let audioCtx = null;
+let infiniteMode = false;
+let lfoPhase1 = 0, lfoPhase2 = 0, lfoPhase3 = 0;
+let infiniteVel = 150;
 
 // --- Canvas ---
 const canvas = document.getElementById('c');
@@ -212,6 +233,13 @@ document.querySelectorAll('.picker button').forEach(btn => {
   });
 });
 
+// --- Infinite mode ---
+document.getElementById('infBtn').addEventListener('click', () => {
+  ensureAudio();
+  infiniteMode = !infiniteMode;
+  document.getElementById('infBtn').classList.toggle('active', infiniteMode);
+});
+
 // --- Audio engine ---
 let saxBuffer = null;
 let saxSource = null;
@@ -272,7 +300,7 @@ function ensureAudio() {
   synthProcessor.onaudioprocess = function(e) {
     const output = e.outputBuffer.getChannelData(0);
     const sr = audioCtx.sampleRate;
-    const vel = Math.abs(angularVelocity);
+    const vel = infiniteMode ? Math.max(Math.abs(angularVelocity), infiniteVel) : Math.abs(angularVelocity);
     const sound = selectedSound;
     const isKeys = sound === 'keyboard';
     const isBone = sound === 'trombone';
@@ -382,7 +410,7 @@ function ensureAudio() {
 // --- Sax playback ---
 function updateSax() {
   if (!audioCtx || !saxBuffer) return;
-  const vel = Math.abs(angularVelocity);
+  const vel = infiniteMode ? Math.max(Math.abs(angularVelocity), infiniteVel) : Math.abs(angularVelocity);
 
   if (selectedSound === 'saxophone') {
     if (!saxPlaying && vel > 2) {
@@ -460,6 +488,13 @@ function tick() {
       angularVelocity = 0;
     }
   }
+
+  lfoPhase1 = (lfoPhase1 + 0.05 / 60) % 1;
+  lfoPhase2 = (lfoPhase2 + 0.11 / 60) % 1;
+  lfoPhase3 = (lfoPhase3 + 0.19 / 60) % 1;
+  infiniteVel = 150 + (Math.sin(2 * Math.PI * lfoPhase1) * 0.5
+              + Math.sin(2 * Math.PI * lfoPhase2) * 0.3
+              + Math.sin(2 * Math.PI * lfoPhase3) * 0.2) * 70;
 
   updateSax();
   drawYinYang();
