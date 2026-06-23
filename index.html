@@ -59,28 +59,67 @@
       transition: color 0.15s;
     }
     .picker button.active { color: #fff; }
-    .inf-btn {
+    .inf-toggle {
       position: fixed;
-      top: 14px;
+      top: 16px;
       right: 18px;
-      background: none;
-      border: none;
-      color: #4d4d4d;
-      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       cursor: pointer;
-      padding: 6px;
-      transition: color 0.15s;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      -webkit-user-select: none;
-      font-family: inherit;
     }
-    .inf-btn.active { color: #fff; }
+    .inf-toggle label {
+      font-size: 11px;
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #4d4d4d;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .inf-toggle.active label { color: #fff; }
+    .inf-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      cursor: pointer;
+    }
+    .inf-switch input { display: none; }
+    .inf-switch-track {
+      position: absolute;
+      inset: 0;
+      background: #262626;
+      border-radius: 10px;
+      transition: background 0.2s;
+    }
+    .inf-switch input:checked + .inf-switch-track { background: #555; }
+    .inf-switch-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      background: #4d4d4d;
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .inf-switch input:checked ~ .inf-switch-thumb {
+      transform: translateX(16px);
+      background: #fff;
+    }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
-  <button class="inf-btn" id="infBtn">∞</button>
+  <div class="inf-toggle" id="infToggle">
+    <label for="infCheck">∞</label>
+    <label class="inf-switch">
+      <input type="checkbox" id="infCheck">
+      <div class="inf-switch-track"></div>
+      <div class="inf-switch-thumb"></div>
+    </label>
+  </div>
   <div class="picker">
     <button data-sound="voice">Voice</button>
     <button class="active" data-sound="saxophone">Sax</button>
@@ -234,10 +273,10 @@ document.querySelectorAll('.picker button').forEach(btn => {
 });
 
 // --- Infinite mode ---
-document.getElementById('infBtn').addEventListener('click', () => {
+document.getElementById('infCheck').addEventListener('change', e => {
   ensureAudio();
-  infiniteMode = !infiniteMode;
-  document.getElementById('infBtn').classList.toggle('active', infiniteMode);
+  infiniteMode = e.target.checked;
+  document.getElementById('infToggle').classList.toggle('active', infiniteMode);
 });
 
 // --- Audio engine ---
