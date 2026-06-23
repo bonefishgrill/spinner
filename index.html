@@ -264,10 +264,18 @@ window.addEventListener('touchend', pointerUp);
 // --- Sound picker ---
 document.querySelectorAll('.picker button').forEach(btn => {
   btn.addEventListener('click', () => {
+    ensureAudio();
     document.querySelectorAll('.picker button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     selectedSound = btn.dataset.sound;
   });
+});
+
+// Resume AudioContext on any interaction — iOS suspends it aggressively
+['touchstart', 'mousedown'].forEach(type => {
+  document.addEventListener(type, () => {
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }, { passive: true });
 });
 
 // --- Infinite mode ---
@@ -303,8 +311,15 @@ let bellReverbSend = null;
 let bellReverbGain = null;
 
 function ensureAudio() {
-  if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // iOS unlock: play a silent buffer immediately inside the gesture
+    const unlock = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    const unlockSrc = audioCtx.createBufferSource();
+    unlockSrc.buffer = unlock;
+    unlockSrc.connect(audioCtx.destination);
+    unlockSrc.start(0);
+  }
   if (audioCtx.state === 'suspended') audioCtx.resume();
 
   // Load sax mp3
@@ -690,6 +705,7 @@ function ensureAudio() {
 // --- Sax playback ---
 function updateSax() {
   if (!audioCtx || !saxBuffer) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   const vel = infiniteMode ? Math.max(Math.abs(angularVelocity), infiniteVel) : Math.abs(angularVelocity);
 
   if (selectedSound === 'saxophone') {
@@ -735,6 +751,7 @@ function updateSax() {
 // --- Oleg (Voice) playback ---
 function updateOleg() {
   if (!audioCtx || !olegBuffer) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   const vel = infiniteMode ? Math.max(Math.abs(angularVelocity), infiniteVel) : Math.abs(angularVelocity);
 
   if (selectedSound === 'voice') {
