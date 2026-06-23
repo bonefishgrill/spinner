@@ -405,7 +405,7 @@ private func speak(velocity: Double) {
 
 struct ContentView: View {
     @StateObject private var soundEngine = SoundEngine()
-    @State private var selectedSound: SoundType = .saxophone
+    @State private var selectedSound: SoundType = .voice
     @State private var rotation: Double = 0
     @State private var angularVelocity: Double = 0
     @State private var isDragging = false
