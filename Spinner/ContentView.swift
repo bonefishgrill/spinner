@@ -4,7 +4,7 @@ import AVFoundation
 // MARK: - Sound types
 
 enum SoundType: Int, CaseIterable {
-    case voice, saxophone, keyboard, trombone, bubbles
+    case voice, saxophone, keyboard, trombone, bubbles, bells
 
     var label: String {
         switch self {
@@ -13,6 +13,7 @@ enum SoundType: Int, CaseIterable {
         case .keyboard:  return "Keys"
         case .trombone:  return "Bone"
         case .bubbles:   return "Bubbles"
+        case .bells:     return "Afternoon"
         }
     }
 
@@ -23,6 +24,7 @@ enum SoundType: Int, CaseIterable {
         case .keyboard:  return "keyboard"
         case .trombone:  return "trombone"
         case .bubbles:   return ""
+        case .bells:     return ""
         }
     }
 }
@@ -62,6 +64,12 @@ class SoundEngine: ObservableObject {
     private var bubbleTimer: Int = 0
     private var waterNoise: Double = 0
 
+    private struct BellVoice { var phase, freq, amp, target: Double; var timer: Int }
+    private static let bellFreqs: [Double] = [65.41, 98.00, 116.54, 130.81, 155.56, 174.61, 196.00, 233.08, 261.63, 311.13, 349.23, 392.00, 466.16]
+    private var bellVoices: [BellVoice] = []
+    private var bellsInit = false
+    private let bellReverb = AVAudioUnitReverb()
+
     init() {
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
@@ -83,10 +91,11 @@ class SoundEngine: ObservableObject {
             let vel = abs(self.synthVelocity)
             let signedVel = self.synthVelocity
             let hasSample = self.sampleBuffers[self.synthSoundType] != nil
-            let isKeys = self.synthSoundType == .keyboard
+            let isKeys   = self.synthSoundType == .keyboard
             let isBubbles = self.synthSoundType == .bubbles
+            let isBells  = self.synthSoundType == .bells
             let targetAmp: Double
-            if self.synthSoundType == .voice || hasSample || isBubbles {
+            if self.synthSoundType == .voice || hasSample || isBubbles || isBells {
                 targetAmp = 0.0
             } else if isKeys {
                 targetAmp = min(vel / 120.0, 0.5)
@@ -154,6 +163,33 @@ class SoundEngine: ObservableObject {
                     let wNoise = Double.random(in: -1...1) * 0.012
                     self.waterNoise += 0.05 * (wNoise - self.waterNoise)
                     s = bsum + self.waterNoise * min(vel / 80.0, 1.0)
+                } else if isBells {
+                    if !self.bellsInit {
+                        self.bellsInit = true
+                        self.bellVoices = (0..<8).map { _ in
+                            BellVoice(phase: Double.random(in: 0...1), freq: SoundEngine.bellFreqs.randomElement()!, amp: 0, target: 0, timer: Int.random(in: 0..<Int(sampleRate * 4)))
+                        }
+                    }
+                    var bsum = 0.0
+                    for i in 0..<self.bellVoices.count {
+                        self.bellVoices[i].timer -= 1
+                        if self.bellVoices[i].timer <= 0 {
+                            if self.bellVoices[i].target > 0 {
+                                self.bellVoices[i].target = 0
+                                self.bellVoices[i].timer = Int(Double.random(in: 4...10) * sampleRate)
+                            } else {
+                                self.bellVoices[i].freq = SoundEngine.bellFreqs.randomElement()!
+                                self.bellVoices[i].target = Double.random(in: 0.09...0.14)
+                                self.bellVoices[i].timer = Int(Double.random(in: 3...7) * sampleRate)
+                            }
+                        }
+                        let k = self.bellVoices[i].target > self.bellVoices[i].amp ? 0.00001 : 0.000006
+                        self.bellVoices[i].amp += (self.bellVoices[i].target - self.bellVoices[i].amp) * k
+                        self.bellVoices[i].phase += self.bellVoices[i].freq / sampleRate
+                        if self.bellVoices[i].phase >= 1.0 { self.bellVoices[i].phase -= 1.0 }
+                        bsum += (sin(2.0 * Double.pi * self.bellVoices[i].phase) * 0.88 + sin(4.0 * Double.pi * self.bellVoices[i].phase) * 0.12) * self.bellVoices[i].amp
+                    }
+                    s = bsum
                 } else {
                     let freq: Double
                     if self.synthSoundType == .trombone {
@@ -200,18 +236,23 @@ class SoundEngine: ObservableObject {
             return noErr
         }
 
+        bellReverb.loadFactoryPreset(.cathedral)
+        bellReverb.wetDryMix = 0
         engine.attach(playerNode)
         engine.attach(varispeed)
         engine.attach(synthNode!)
+        engine.attach(bellReverb)
         engine.connect(playerNode, to: varispeed, format: nil)
         engine.connect(varispeed, to: engine.mainMixerNode, format: nil)
-        engine.connect(synthNode!, to: engine.mainMixerNode, format: monoFormat)
+        engine.connect(synthNode!, to: bellReverb, format: monoFormat)
+        engine.connect(bellReverb, to: engine.mainMixerNode, format: nil)
         try? engine.start()
     }
 
     func update() {
         let vel = abs(velocity)
         let hasSample = sampleBuffers[soundType] != nil
+        bellReverb.wetDryMix = soundType == .bells ? 70 : 0
 
         if hasSample {
             synthVelocity = 0
@@ -305,6 +346,7 @@ class SoundEngine: ObservableObject {
         case .saxophone: return (2*phase-1)*0.5 + sin(2*Double.pi*phase*3)*0.25 + sin(2*Double.pi*phase*5)*0.12
         case .keyboard:  return 0  // handled by Juno synth
         case .bubbles:   return 0
+        case .bells:     return 0
         case .trombone:
             // Trombone: strong fundamental + prominent odd harmonics + buzz
             let p = 2.0 * Double.pi * phase
