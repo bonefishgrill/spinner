@@ -480,21 +480,28 @@ function speak(velocity) {
 
 // --- Main loop ---
 function tick() {
+  lfoPhase1 = (lfoPhase1 + 0.05 / 60) % 1;
+  lfoPhase2 = (lfoPhase2 + 0.11 / 60) % 1;
+  lfoPhase3 = (lfoPhase3 + 0.19 / 60) % 1;
+  const lfoVal = Math.sin(2 * Math.PI * lfoPhase1) * 0.5
+               + Math.sin(2 * Math.PI * lfoPhase2) * 0.3
+               + Math.sin(2 * Math.PI * lfoPhase3) * 0.2;
+  infiniteVel = 150 + lfoVal * 70;
+
   if (!isDragging) {
-    if (Math.abs(angularVelocity) > 0.1) {
+    if (infiniteMode) {
+      const grooveMag = 35 + lfoVal * 20;
+      const dir = angularVelocity >= 0 ? 1 : -1;
+      angularVelocity += (dir * grooveMag - angularVelocity) * 0.004;
+      if (Math.abs(angularVelocity) > grooveMag * 2) angularVelocity *= 0.99;
+      rotation += angularVelocity * 0.016;
+    } else if (Math.abs(angularVelocity) > 0.1) {
       rotation += angularVelocity * 0.016;
       angularVelocity *= 0.995;
     } else {
       angularVelocity = 0;
     }
   }
-
-  lfoPhase1 = (lfoPhase1 + 0.05 / 60) % 1;
-  lfoPhase2 = (lfoPhase2 + 0.11 / 60) % 1;
-  lfoPhase3 = (lfoPhase3 + 0.19 / 60) % 1;
-  infiniteVel = 150 + (Math.sin(2 * Math.PI * lfoPhase1) * 0.5
-              + Math.sin(2 * Math.PI * lfoPhase2) * 0.3
-              + Math.sin(2 * Math.PI * lfoPhase3) * 0.2) * 70;
 
   updateSax();
   drawYinYang();
