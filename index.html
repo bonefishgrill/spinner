@@ -389,6 +389,9 @@ function ensureAudio() {
     // Bell (Afternoon) voices
     bells: Array.from({length: 8}, () => ({ phase: Math.random(), freq: 130.81, amp: 0, target: 0, timer: Math.floor(Math.random() * 176400) })),
     bellsInit: false,
+    // Infinite keys chord crossfade
+    keysChordBlend: 1.0,
+    keysPrevFreqs: [130.81, 155.56, 196.00, 233.08],
     // Infinite keys
     keysChordIdx: 0,
     keysChordTimer: 0,
@@ -437,8 +440,11 @@ function ensureAudio() {
       synth.keysChordTimer += output.length;
       if (synth.keysChordTimer >= sr * 10) {
         synth.keysChordTimer -= sr * 10;
+        synth.keysPrevFreqs = INF_CHORDS[synth.keysChordIdx].slice();
         synth.keysChordIdx = (synth.keysChordIdx + 1) % INF_CHORDS.length;
+        synth.keysChordBlend = 0;
       }
+      synth.keysChordBlend = Math.min(synth.keysChordBlend + output.length / (sr * 3), 1.0);
       synth.keysMelodyTimer += output.length;
       if (synth.keysMelodyTimer >= sr * 5) {
         synth.keysMelodyTimer -= sr * 5;
@@ -461,7 +467,10 @@ function ensureAudio() {
         let mix = 0;
         for (let v = 0; v < 4; v++) {
           const detune = detuneAmounts[v] + chorusMod * 0.002;
-          const f = junoFreqs[v] * detune;
+          const baseFreq = infiniteMode
+            ? (1 - synth.keysChordBlend) * synth.keysPrevFreqs[v] + synth.keysChordBlend * INF_CHORDS[synth.keysChordIdx][v]
+            : junoFreqs[v];
+          const f = baseFreq * detune;
           synth.junoPhases[v] += f / sr;
           if (synth.junoPhases[v] >= 1) synth.junoPhases[v] -= 1;
 
@@ -517,6 +526,7 @@ function ensureAudio() {
             synth.bells[v].freq = BELL_FREQS[Math.floor(Math.random() * BELL_FREQS.length)];
           }
         }
+        const bellVol = infiniteMode ? 1.0 : Math.min(vel / 80, 1.0);
         for (let v = 0; v < synth.bells.length; v++) {
           const bv = synth.bells[v];
           bv.timer--;
@@ -534,7 +544,7 @@ function ensureAudio() {
           bv.amp += (bv.target - bv.amp) * k;
           bv.phase += bv.freq / sr;
           if (bv.phase >= 1) bv.phase -= 1;
-          s += (Math.sin(2 * Math.PI * bv.phase) * 0.88 + Math.sin(4 * Math.PI * bv.phase) * 0.12) * bv.amp;
+          s += (Math.sin(2 * Math.PI * bv.phase) * 0.88 + Math.sin(4 * Math.PI * bv.phase) * 0.12) * bv.amp * bellVol;
         }
       }
 
