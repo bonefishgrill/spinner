@@ -311,6 +311,21 @@ function ensureAudio() {
         const dst = trimmed.getChannelData(ch);
         dst.set(src.subarray(skipFrames));
       }
+      // Crossfade loop seam: blend last 0.3s into first 0.3s
+      const xfadeFrames = Math.floor(decoded.sampleRate * 0.3);
+      for (let ch = 0; ch < trimmed.numberOfChannels; ch++) {
+        const d = trimmed.getChannelData(ch);
+        const len = trimmed.length;
+        for (let i = 0; i < xfadeFrames; i++) {
+          const t = i / xfadeFrames;
+          const fadeIn  = Math.sin(t * Math.PI / 2);
+          const fadeOut = Math.cos(t * Math.PI / 2);
+          d[i] = d[i] * fadeIn + d[len - xfadeFrames + i] * fadeOut;
+        }
+        for (let i = len - xfadeFrames; i < len; i++) {
+          d[i] *= Math.cos(((i - (len - xfadeFrames)) / xfadeFrames) * Math.PI / 2);
+        }
+      }
       saxBuffer = trimmed;
     })
     .catch(e => console.warn('Failed to load sax audio:', e));
@@ -494,9 +509,14 @@ function updateSax() {
       saxPlaying = true;
     }
     if (saxPlaying) {
-      const rate = Math.max(0.5, Math.min(vel / 200, 1));
-      saxSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.05);
-      saxGain.gain.setTargetAtTime(Math.min(vel / 80, 1), audioCtx.currentTime, 0.05);
+      if (infiniteMode) {
+        saxSource.playbackRate.setTargetAtTime(1.0, audioCtx.currentTime, 0.3);
+        saxGain.gain.setTargetAtTime(0.8, audioCtx.currentTime, 0.3);
+      } else {
+        const rate = Math.max(0.5, Math.min(vel / 200, 1));
+        saxSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.05);
+        saxGain.gain.setTargetAtTime(Math.min(vel / 80, 1), audioCtx.currentTime, 0.05);
+      }
     }
     if (saxReverbGain) {
       saxReverbGain.gain.setTargetAtTime(infiniteMode ? 0.55 : 0, audioCtx.currentTime, 0.4);
