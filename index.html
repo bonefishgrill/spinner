@@ -291,6 +291,7 @@ let saxDelayFeedback = null;
 let saxDelayGain = null;
 let synthProcessor = null;
 let synthGain = null;
+let synthReverbSend = null;
 
 function ensureAudio() {
   if (audioCtx) return;
@@ -382,7 +383,22 @@ function ensureAudio() {
     bubbles: [],
     bubbleTimer: 0,
     waterNoise: 0,
+    // Infinite keys
+    keysChordIdx: 0,
+    keysChordTimer: 0,
+    keysMelodyPhase: 0,
+    keysMelodyAmp: 0,
+    keysMelodyIdx: 0,
+    keysMelodyTimer: 0,
   };
+
+  const INF_CHORDS = [
+    [130.81, 155.56, 196.00, 233.08], // Cm7
+    [174.61, 207.65, 261.63, 311.13], // Fm7
+    [196.00, 233.08, 293.66, 349.23], // Gm7
+    [207.65, 261.63, 311.13, 392.00], // Abmaj7
+  ];
+  const INF_MELODY = [261.63, 293.66, 311.13, 349.23, 392.00, 349.23, 311.13, 293.66];
 
   synthProcessor.onaudioprocess = function(e) {
     const output = e.outputBuffer.getChannelData(0);
@@ -396,15 +412,30 @@ function ensureAudio() {
 
     let targetAmp = 0;
     if (isKeys) {
-      targetAmp = Math.min(vel / 120, 0.5);
+      targetAmp = infiniteMode ? 0.35 : Math.min(vel / 120, 0.5);
     } else if (isBone) {
       targetAmp = Math.min(vel / 300, 0.45);
     }
 
     // Juno chord frequencies
     const pitchScale = Math.max(0.5, Math.min(vel / 200, 1));
-    const junoFreqs = [130.81 * pitchScale, 155.56 * pitchScale, 196.0 * pitchScale, 233.08 * pitchScale];
+    const junoFreqs = (isKeys && infiniteMode)
+      ? INF_CHORDS[synth.keysChordIdx]
+      : [130.81 * pitchScale, 155.56 * pitchScale, 196.0 * pitchScale, 233.08 * pitchScale];
     const detuneAmounts = [0.998, 1.004, 0.996, 1.003];
+
+    if (isKeys && infiniteMode) {
+      synth.keysChordTimer += output.length;
+      if (synth.keysChordTimer >= sr * 10) {
+        synth.keysChordTimer -= sr * 10;
+        synth.keysChordIdx = (synth.keysChordIdx + 1) % INF_CHORDS.length;
+      }
+      synth.keysMelodyTimer += output.length;
+      if (synth.keysMelodyTimer >= sr * 5) {
+        synth.keysMelodyTimer -= sr * 5;
+        synth.keysMelodyIdx = (synth.keysMelodyIdx + 1) % INF_MELODY.length;
+      }
+    }
 
     for (let i = 0; i < output.length; i++) {
       const smoothing = isKeys ? (targetAmp > synth.amp ? 0.03 : 0.015) : 0.002;
@@ -434,6 +465,13 @@ function ensureAudio() {
         const cutoff = 0.15 + synth.amp * 0.3;
         synth.filterState += cutoff * (mix - synth.filterState);
         s = synth.filterState * synth.amp;
+
+        if (infiniteMode) {
+          synth.keysMelodyAmp += (0.09 - synth.keysMelodyAmp) * 0.0008;
+          synth.keysMelodyPhase += INF_MELODY[synth.keysMelodyIdx] / sr;
+          if (synth.keysMelodyPhase >= 1) synth.keysMelodyPhase -= 1;
+          s += Math.sin(2 * Math.PI * synth.keysMelodyPhase) * synth.keysMelodyAmp;
+        }
 
       } else if (isBone) {
         const slide = Math.min(vel / 300, 1);
@@ -489,6 +527,10 @@ function ensureAudio() {
   synthGain.gain.value = 1;
   synthProcessor.connect(synthGain);
   synthGain.connect(audioCtx.destination);
+  synthReverbSend = audioCtx.createGain();
+  synthReverbSend.gain.value = 0;
+  synthGain.connect(synthReverbSend);
+  synthReverbSend.connect(saxReverb);
 
   // Store synth ref for record stop
   synthProcessor._synth = synth;
@@ -601,6 +643,11 @@ function tick() {
     } else {
       angularVelocity = 0;
     }
+  }
+
+  if (synthReverbSend && audioCtx) {
+    const keysWet = (infiniteMode && selectedSound === 'keyboard') ? 0.45 : 0;
+    synthReverbSend.gain.setTargetAtTime(keysWet, audioCtx.currentTime, 0.4);
   }
 
   updateSax();
