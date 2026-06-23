@@ -77,7 +77,7 @@ let audioCtx = null;
 // --- Canvas ---
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-const SIZE = 200;
+const SIZE = 240;
 let scale = 1;
 
 function resize() {
@@ -94,7 +94,7 @@ function drawYinYang() {
   ctx.save();
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.clearRect(0, 0, SIZE, SIZE);
-  const cx = SIZE / 2, cy = SIZE / 2, r = 90;
+  const cx = SIZE / 2, cy = SIZE / 2, r = 108;
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -448,7 +448,7 @@ function tick() {
   if (!isDragging) {
     if (Math.abs(angularVelocity) > 0.1) {
       rotation += angularVelocity * 0.016;
-      angularVelocity *= 0.99;
+      angularVelocity *= 0.995;
     } else {
       angularVelocity = 0;
     }

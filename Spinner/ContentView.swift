@@ -377,7 +377,7 @@ struct ContentView: View {
                                     angularVelocity = 0
                                 }
                                 isDragging = true
-                                let center = CGPoint(x: 100, y: 100)
+                                let center = CGPoint(x: 120, y: 120)
                                 let angle = atan2(
                                     Double(value.location.y - center.y),
                                     Double(value.location.x - center.x)
@@ -419,7 +419,7 @@ struct ContentView: View {
             guard !isDragging else { return }
             guard abs(angularVelocity) > 0.1 else { angularVelocity = 0; return }
             rotation += angularVelocity * 0.016
-            angularVelocity *= 0.99
+            angularVelocity *= 0.995
         }
     }
 
@@ -447,13 +447,13 @@ struct ContentView: View {
     var yinYang: some View {
         ZStack {
             Circle().fill(Color(white: 0.94))
-            Rectangle().fill(Color(white: 0.1)).frame(width: 100, height: 200).offset(x: -50)
-            Circle().fill(Color(white: 0.1)).frame(width: 100, height: 100).offset(y: -50)
-            Circle().fill(Color(white: 0.94)).frame(width: 100, height: 100).offset(y: 50)
-            Circle().fill(Color(white: 0.94)).frame(width: 34, height: 34).offset(y: -50)
-            Circle().fill(Color(white: 0.1)).frame(width: 34, height: 34).offset(y: 50)
+            Rectangle().fill(Color(white: 0.1)).frame(width: 120, height: 240).offset(x: -60)
+            Circle().fill(Color(white: 0.1)).frame(width: 120, height: 120).offset(y: -60)
+            Circle().fill(Color(white: 0.94)).frame(width: 120, height: 120).offset(y: 60)
+            Circle().fill(Color(white: 0.94)).frame(width: 41, height: 41).offset(y: -60)
+            Circle().fill(Color(white: 0.1)).frame(width: 41, height: 41).offset(y: 60)
         }
-        .frame(width: 200, height: 200)
+        .frame(width: 240, height: 240)
         .clipShape(Circle())
     }
 }
