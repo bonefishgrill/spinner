@@ -494,16 +494,9 @@ function updateSax() {
       saxPlaying = true;
     }
     if (saxPlaying) {
-      if (infiniteMode) {
-        const rawVel = Math.abs(angularVelocity);
-        const rate = rawVel > 60 ? Math.max(0.5, Math.min(rawVel / 200, 1)) : 0.75;
-        saxSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.8);
-        saxGain.gain.setTargetAtTime(0.65, audioCtx.currentTime, 0.2);
-      } else {
-        const rate = Math.max(0.5, Math.min(vel / 200, 1));
-        saxSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.05);
-        saxGain.gain.setTargetAtTime(Math.min(vel / 80, 1), audioCtx.currentTime, 0.05);
-      }
+      const rate = Math.max(0.5, Math.min(vel / 200, 1));
+      saxSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.05);
+      saxGain.gain.setTargetAtTime(Math.min(vel / 80, 1), audioCtx.currentTime, 0.05);
     }
     if (saxReverbGain) {
       saxReverbGain.gain.setTargetAtTime(infiniteMode ? 0.55 : 0, audioCtx.currentTime, 0.4);
