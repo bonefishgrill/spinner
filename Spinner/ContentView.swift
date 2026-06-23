@@ -4,7 +4,7 @@ import AVFoundation
 // MARK: - Sound types
 
 enum SoundType: Int, CaseIterable {
-    case voice, saxophone, keyboard, trombone
+    case voice, saxophone, keyboard, trombone, bubbles
 
     var label: String {
         switch self {
@@ -12,6 +12,7 @@ enum SoundType: Int, CaseIterable {
         case .saxophone: return "Sax"
         case .keyboard:  return "Keys"
         case .trombone:  return "Bone"
+        case .bubbles:   return "Bubbles"
         }
     }
 
@@ -21,6 +22,7 @@ enum SoundType: Int, CaseIterable {
         case .saxophone: return "01 - dedicated to multi-instrumentalist jack gell"
         case .keyboard:  return "keyboard"
         case .trombone:  return "trombone"
+        case .bubbles:   return ""
         }
     }
 }
@@ -55,6 +57,11 @@ class SoundEngine: ObservableObject {
     private var scratchSampleOffset: AVAudioFramePosition = 0
     private var scratchBuffer: AVAudioPCMBuffer? = nil
 
+    private struct Bubble { var phase, freq, amp, decay: Double }
+    private var bubbles: [Bubble] = []
+    private var bubbleTimer: Int = 0
+    private var waterNoise: Double = 0
+
     init() {
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
@@ -77,8 +84,9 @@ class SoundEngine: ObservableObject {
             let signedVel = self.synthVelocity
             let hasSample = self.sampleBuffers[self.synthSoundType] != nil
             let isKeys = self.synthSoundType == .keyboard
+            let isBubbles = self.synthSoundType == .bubbles
             let targetAmp: Double
-            if self.synthSoundType == .voice || hasSample {
+            if self.synthSoundType == .voice || hasSample || isBubbles {
                 targetAmp = 0.0
             } else if isKeys {
                 targetAmp = min(vel / 120.0, 0.5)
@@ -125,6 +133,27 @@ class SoundEngine: ObservableObject {
                     let cutoff = 0.15 + self.synthAmp * 0.3
                     self.junoFilterState += cutoff * (mix - self.junoFilterState)
                     s = self.junoFilterState * self.synthAmp
+                } else if isBubbles {
+                    self.bubbleTimer -= 1
+                    if vel > 5 && self.bubbleTimer <= 0 {
+                        let rate = min(vel / 25.0, 25.0)
+                        let interval = max(Int(sampleRate / rate * (0.5 + Double.random(in: 0...0.5))), 1)
+                        self.bubbleTimer = interval
+                        self.bubbles.append(Bubble(phase: 0, freq: 120 + Double.random(in: 0...400), amp: 0.18 + Double.random(in: 0...0.12), decay: 0.9988 + Double.random(in: 0...0.0008)))
+                    }
+                    var bsum = 0.0
+                    var j = self.bubbles.count - 1
+                    while j >= 0 {
+                        bsum += sin(2.0 * Double.pi * self.bubbles[j].phase) * self.bubbles[j].amp
+                        self.bubbles[j].phase += self.bubbles[j].freq / sampleRate
+                        if self.bubbles[j].phase >= 1.0 { self.bubbles[j].phase -= 1.0 }
+                        self.bubbles[j].amp *= self.bubbles[j].decay
+                        if self.bubbles[j].amp < 0.001 { self.bubbles.remove(at: j) }
+                        j -= 1
+                    }
+                    let wNoise = Double.random(in: -1...1) * 0.012
+                    self.waterNoise += 0.05 * (wNoise - self.waterNoise)
+                    s = bsum + self.waterNoise * min(vel / 80.0, 1.0)
                 } else {
                     let freq: Double
                     if self.synthSoundType == .trombone {
@@ -275,6 +304,7 @@ class SoundEngine: ObservableObject {
         case .voice:     return 0
         case .saxophone: return (2*phase-1)*0.5 + sin(2*Double.pi*phase*3)*0.25 + sin(2*Double.pi*phase*5)*0.12
         case .keyboard:  return 0  // handled by Juno synth
+        case .bubbles:   return 0
         case .trombone:
             // Trombone: strong fundamental + prominent odd harmonics + buzz
             let p = 2.0 * Double.pi * phase

@@ -61,6 +61,7 @@
     <button class="active" data-sound="saxophone">Sax</button>
     <button data-sound="keyboard">Keys</button>
     <button data-sound="trombone">Bone</button>
+    <button data-sound="bubbles">Bubbles</button>
   </div>
 
 <script>
@@ -255,6 +256,10 @@ function ensureAudio() {
     stopRate: 1,
     stopBuffer: null,
     stopOffset: 0,
+    // Bubbles
+    bubbles: [],
+    bubbleTimer: 0,
+    waterNoise: 0,
   };
 
   synthProcessor.onaudioprocess = function(e) {
@@ -264,6 +269,7 @@ function ensureAudio() {
     const sound = selectedSound;
     const isKeys = sound === 'keyboard';
     const isBone = sound === 'trombone';
+    const isBubbles = sound === 'bubbles';
     const isSynth = isKeys || isBone;
 
     let targetAmp = 0;
@@ -317,6 +323,24 @@ function ensureAudio() {
         const raw = Math.sin(p) * 0.35 + Math.sin(p*2) * 0.25 + Math.sin(p*3) * 0.20
                   + Math.sin(p*4) * 0.12 + Math.sin(p*5) * 0.06 + Math.sin(p*6) * 0.03;
         s = Math.max(-0.7, Math.min(raw, 0.7)) * synth.amp;
+      } else if (isBubbles) {
+        synth.bubbleTimer--;
+        if (vel > 5 && synth.bubbleTimer <= 0) {
+          const rate = Math.min(vel / 25, 25);
+          synth.bubbleTimer = Math.floor(sr / rate * (0.5 + Math.random() * 0.5));
+          synth.bubbles.push({ phase: 0, freq: 120 + Math.random() * 400, amp: 0.18 + Math.random() * 0.12, decay: 0.9988 + Math.random() * 0.0008 });
+        }
+        for (let j = synth.bubbles.length - 1; j >= 0; j--) {
+          const b = synth.bubbles[j];
+          s += Math.sin(2 * Math.PI * b.phase) * b.amp;
+          b.phase += b.freq / sr;
+          if (b.phase >= 1) b.phase -= 1;
+          b.amp *= b.decay;
+          if (b.amp < 0.001) synth.bubbles.splice(j, 1);
+        }
+        const wNoise = (Math.random() * 2 - 1) * 0.012;
+        synth.waterNoise += 0.05 * (wNoise - synth.waterNoise);
+        s += synth.waterNoise * Math.min(vel / 80, 1);
       }
 
       // Record-stop effect
