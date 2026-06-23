@@ -453,6 +453,10 @@ function ensureAudio() {
     bubbles: [],
     bubbleTimer: 0,
     waterNoise: 0,
+    // Ambient pad (Bubbles infinite mode)
+    padPhases: [0, 0, 0],
+    padLfoPhase: 0,
+    padAmp: 0,
     // Bell (Afternoon) voices
     bells: Array.from({length: 8}, () => ({ phase: Math.random(), freq: 130.81, amp: 0, target: 0, timer: Math.floor(Math.random() * 176400) })),
     bellsInit: false,
@@ -586,6 +590,21 @@ function ensureAudio() {
         const wNoise = (Math.random() * 2 - 1) * 0.012;
         synth.waterNoise += 0.05 * (wNoise - synth.waterNoise);
         s += synth.waterNoise * Math.min(vel / 80, 1);
+
+        // Ambient pad underneath in infinite mode
+        const padTarget = infiniteMode ? 0.038 : 0;
+        synth.padAmp += (padTarget - synth.padAmp) * 0.0002;
+        if (synth.padAmp > 0.0001) {
+          synth.padLfoPhase += 0.06 / sr;
+          if (synth.padLfoPhase >= 1) synth.padLfoPhase -= 1;
+          const padMod = 0.65 + 0.35 * Math.sin(2 * Math.PI * synth.padLfoPhase);
+          const padFreqs = [65.41, 98.00, 155.56]; // C2, G2, Eb3
+          for (let p = 0; p < 3; p++) {
+            synth.padPhases[p] += padFreqs[p] / sr;
+            if (synth.padPhases[p] >= 1) synth.padPhases[p] -= 1;
+            s += Math.sin(2 * Math.PI * synth.padPhases[p]) * synth.padAmp * padMod;
+          }
+        }
       } else if (isBells) {
         if (!synth.bellsInit) {
           synth.bellsInit = true;
