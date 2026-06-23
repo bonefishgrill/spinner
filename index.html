@@ -284,6 +284,11 @@ let saxBuffer = null;
 let saxSource = null;
 let saxGain = null;
 let saxPlaying = false;
+let saxReverb = null;
+let saxReverbGain = null;
+let saxDelay = null;
+let saxDelayFeedback = null;
+let saxDelayGain = null;
 let synthProcessor = null;
 let synthGain = null;
 
@@ -314,6 +319,34 @@ function ensureAudio() {
   saxGain = audioCtx.createGain();
   saxGain.gain.value = 0;
   saxGain.connect(audioCtx.destination);
+
+  // Sax reverb — synthetic impulse response
+  const irLen = Math.floor(audioCtx.sampleRate * 3.5);
+  const irBuf = audioCtx.createBuffer(2, irLen, audioCtx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = irBuf.getChannelData(ch);
+    for (let i = 0; i < irLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2.0);
+  }
+  saxReverb = audioCtx.createConvolver();
+  saxReverb.buffer = irBuf;
+  saxReverbGain = audioCtx.createGain();
+  saxReverbGain.gain.value = 0;
+  saxGain.connect(saxReverb);
+  saxReverb.connect(saxReverbGain);
+  saxReverbGain.connect(audioCtx.destination);
+
+  // Sax delay with feedback
+  saxDelay = audioCtx.createDelay(2.0);
+  saxDelay.delayTime.value = 0.42;
+  saxDelayFeedback = audioCtx.createGain();
+  saxDelayFeedback.gain.value = 0.45;
+  saxDelayGain = audioCtx.createGain();
+  saxDelayGain.gain.value = 0;
+  saxGain.connect(saxDelay);
+  saxDelay.connect(saxDelayFeedback);
+  saxDelayFeedback.connect(saxDelay);
+  saxDelay.connect(saxDelayGain);
+  saxDelayGain.connect(audioCtx.destination);
 
   // Synth via ScriptProcessor
   const BLOCK = 2048;
@@ -461,9 +494,20 @@ function updateSax() {
       saxPlaying = true;
     }
     if (saxPlaying) {
-      const rate = Math.max(0.5, Math.min(vel / 200, 1));
-      saxSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.05);
-      saxGain.gain.setTargetAtTime(Math.min(vel / 80, 1), audioCtx.currentTime, 0.05);
+      if (infiniteMode) {
+        const rawVel = Math.abs(angularVelocity);
+        const rate = rawVel > 60 ? Math.max(0.5, Math.min(rawVel / 200, 1)) : 0.75;
+        saxSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.8);
+        saxGain.gain.setTargetAtTime(0.65, audioCtx.currentTime, 0.2);
+      } else {
+        const rate = Math.max(0.5, Math.min(vel / 200, 1));
+        saxSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.05);
+        saxGain.gain.setTargetAtTime(Math.min(vel / 80, 1), audioCtx.currentTime, 0.05);
+      }
+    }
+    if (saxReverbGain) {
+      saxReverbGain.gain.setTargetAtTime(infiniteMode ? 0.55 : 0, audioCtx.currentTime, 0.4);
+      saxDelayGain.gain.setTargetAtTime(infiniteMode ? 0.4 : 0, audioCtx.currentTime, 0.4);
     }
     if (saxPlaying && vel <= 2) {
       saxSource.stop();
@@ -475,6 +519,10 @@ function updateSax() {
       saxPlaying = false;
     }
     saxGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+    if (saxReverbGain) {
+      saxReverbGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.4);
+      saxDelayGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.4);
+    }
   }
 }
 
