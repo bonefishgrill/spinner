@@ -110,10 +110,33 @@
       transform: translateX(16px);
       background: #fff;
     }
+    #startPrompt {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      pointer-events: none;
+      transition: opacity 0.6s;
+    }
+    #startPrompt span {
+      font-size: 11px;
+      font-weight: 300;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #4d4d4d;
+      animation: startPulse 2s ease-in-out infinite;
+    }
+    @keyframes startPulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.8; }
+    }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
+  <div id="startPrompt"><span>touch to begin</span></div>
   <div class="inf-toggle active" id="infToggle">
     <label for="infCheck">∞</label>
     <label class="inf-switch">
@@ -143,6 +166,11 @@ let audioCtx = null;
 let infiniteMode = true;
 let lfoPhase1 = 0, lfoPhase2 = 0, lfoPhase3 = 0;
 let infiniteVel = 150;
+let appStarted = false;
+
+// Pre-fetch audio at page load — decode is fast once AudioContext is ready
+const _saxFetch = fetch('audio/sax.mp3').then(r => r.arrayBuffer()).catch(() => null);
+const _olegFetch = fetch('audio/oleg.mp3').then(r => r.arrayBuffer()).catch(() => null);
 
 // --- Canvas ---
 const canvas = document.getElementById('c');
@@ -273,11 +301,14 @@ document.querySelectorAll('.picker button').forEach(btn => {
   });
 });
 
-// Resume AudioContext on any interaction — iOS suspends it aggressively
+// First touch: start everything. Subsequent touches: keep AudioContext alive.
+function startApp() {
+  ensureAudio();
+  const prompt = document.getElementById('startPrompt');
+  if (prompt) { prompt.style.opacity = '0'; setTimeout(() => prompt.remove(), 700); }
+}
 ['touchstart', 'mousedown'].forEach(type => {
-  document.addEventListener(type, () => {
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  }, { passive: true });
+  document.addEventListener(type, startApp, { passive: true });
 });
 
 // --- Infinite mode ---
@@ -313,6 +344,7 @@ let bellReverbSend = null;
 let bellReverbGain = null;
 
 function ensureAudio() {
+  appStarted = true;
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     // iOS unlock: play a silent buffer immediately inside the gesture
@@ -321,13 +353,10 @@ function ensureAudio() {
     unlockSrc.buffer = unlock;
     unlockSrc.connect(audioCtx.destination);
     unlockSrc.start(0);
-  }
-  if (audioCtx.state === 'suspended') audioCtx.resume();
 
-  // Load sax mp3
-  fetch('audio/sax.mp3')
-    .then(r => r.arrayBuffer())
-    .then(buf => audioCtx.decodeAudioData(buf))
+    // Decode pre-fetched sax
+  _saxFetch
+    .then(buf => buf && audioCtx.decodeAudioData(buf))
     .then(decoded => {
       // Trim first 1 second
       const skipFrames = Math.floor(decoded.sampleRate * 1);
@@ -357,10 +386,9 @@ function ensureAudio() {
     })
     .catch(e => console.warn('Failed to load sax audio:', e));
 
-  // Load oleg mp3 (throat singing) for Voice mode
-  fetch('audio/oleg.mp3')
-    .then(r => r.arrayBuffer())
-    .then(buf => audioCtx.decodeAudioData(buf))
+    // Decode pre-fetched oleg
+    _olegFetch
+    .then(buf => buf && audioCtx.decodeAudioData(buf))
     .then(decoded => {
       const skipFrames = Math.floor(decoded.sampleRate * 1);
       const remaining = decoded.length - skipFrames;
@@ -703,6 +731,8 @@ function ensureAudio() {
 
   // Store synth ref for record stop
   synthProcessor._synth = synth;
+  } // end if (!audioCtx)
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 // --- Sax playback ---
@@ -843,7 +873,7 @@ function tick() {
   infiniteVel = 150 + lfoVal * 70;
 
   if (!isDragging) {
-    if (infiniteMode) {
+    if (infiniteMode && appStarted) {
       const grooveMag = 35 + lfoVal * 20;
       const dir = angularVelocity >= 0 ? 1 : -1;
       angularVelocity += (dir * grooveMag - angularVelocity) * 0.004;
