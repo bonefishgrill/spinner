@@ -243,9 +243,6 @@ function pointerMove(x, y) {
     rotation += delta;
     lastDragTime = now;
 
-    if (selectedSound === 'voice' && Math.abs(angularVelocity) > 30) {
-      speak(angularVelocity);
-    }
   }
   lastAngle = angle;
 }
@@ -290,6 +287,15 @@ let saxReverbGain = null;
 let saxDelay = null;
 let saxDelayFeedback = null;
 let saxDelayGain = null;
+let olegBuffer = null;
+let olegSource = null;
+let olegGain = null;
+let olegPlaying = false;
+let olegReverb = null;
+let olegReverbGain = null;
+let olegDelay = null;
+let olegDelayFeedback = null;
+let olegDelayGain = null;
 let synthProcessor = null;
 let synthGain = null;
 let synthReverbSend = null;
@@ -333,6 +339,67 @@ function ensureAudio() {
       saxBuffer = trimmed;
     })
     .catch(e => console.warn('Failed to load sax audio:', e));
+
+  // Load oleg mp3 (throat singing) for Voice mode
+  fetch('audio/oleg.mp3')
+    .then(r => r.arrayBuffer())
+    .then(buf => audioCtx.decodeAudioData(buf))
+    .then(decoded => {
+      const skipFrames = Math.floor(decoded.sampleRate * 1);
+      const remaining = decoded.length - skipFrames;
+      const trimmed = audioCtx.createBuffer(decoded.numberOfChannels, remaining, decoded.sampleRate);
+      for (let ch = 0; ch < decoded.numberOfChannels; ch++) {
+        const src = decoded.getChannelData(ch);
+        trimmed.getChannelData(ch).set(src.subarray(skipFrames));
+      }
+      const xfadeFrames = Math.floor(decoded.sampleRate * 0.5);
+      for (let ch = 0; ch < trimmed.numberOfChannels; ch++) {
+        const d = trimmed.getChannelData(ch);
+        const len = trimmed.length;
+        for (let i = 0; i < xfadeFrames; i++) {
+          const t = i / xfadeFrames;
+          d[i] = d[i] * Math.sin(t * Math.PI / 2) + d[len - xfadeFrames + i] * Math.cos(t * Math.PI / 2);
+        }
+        for (let i = len - xfadeFrames; i < len; i++) {
+          d[i] *= Math.cos(((i - (len - xfadeFrames)) / xfadeFrames) * Math.PI / 2);
+        }
+      }
+      olegBuffer = trimmed;
+    })
+    .catch(e => console.warn('Failed to load oleg audio:', e));
+
+  // Oleg gain node
+  olegGain = audioCtx.createGain();
+  olegGain.gain.value = 0;
+  olegGain.connect(audioCtx.destination);
+
+  // Oleg reverb — 4s tail
+  const olegIrLen = Math.floor(audioCtx.sampleRate * 4.0);
+  const olegIrBuf = audioCtx.createBuffer(2, olegIrLen, audioCtx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = olegIrBuf.getChannelData(ch);
+    for (let i = 0; i < olegIrLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / olegIrLen, 1.8);
+  }
+  olegReverb = audioCtx.createConvolver();
+  olegReverb.buffer = olegIrBuf;
+  olegReverbGain = audioCtx.createGain();
+  olegReverbGain.gain.value = 0;
+  olegGain.connect(olegReverb);
+  olegReverb.connect(olegReverbGain);
+  olegReverbGain.connect(audioCtx.destination);
+
+  // Oleg delay with feedback
+  olegDelay = audioCtx.createDelay(2.0);
+  olegDelay.delayTime.value = 0.38;
+  olegDelayFeedback = audioCtx.createGain();
+  olegDelayFeedback.gain.value = 0.40;
+  olegDelayGain = audioCtx.createGain();
+  olegDelayGain.gain.value = 0;
+  olegGain.connect(olegDelay);
+  olegDelay.connect(olegDelayFeedback);
+  olegDelayFeedback.connect(olegDelay);
+  olegDelay.connect(olegDelayGain);
+  olegDelayGain.connect(audioCtx.destination);
 
   // Sax gain node
   saxGain = audioCtx.createGain();
@@ -644,6 +711,47 @@ function updateSax() {
   }
 }
 
+// --- Oleg (Voice) playback ---
+function updateOleg() {
+  if (!audioCtx || !olegBuffer) return;
+  const vel = infiniteMode ? Math.max(Math.abs(angularVelocity), infiniteVel) : Math.abs(angularVelocity);
+
+  if (selectedSound === 'voice') {
+    if (!olegPlaying && vel > 2) {
+      olegSource = audioCtx.createBufferSource();
+      olegSource.buffer = olegBuffer;
+      olegSource.loop = true;
+      olegSource.connect(olegGain);
+      olegSource.start();
+      olegPlaying = true;
+    }
+    if (olegPlaying) {
+      if (infiniteMode) {
+        olegSource.playbackRate.setTargetAtTime(1.0, audioCtx.currentTime, 0.3);
+        olegGain.gain.setTargetAtTime(0.8, audioCtx.currentTime, 0.3);
+      } else {
+        const rate = Math.max(0.5, Math.min(vel / 200, 1));
+        olegSource.playbackRate.setTargetAtTime(rate, audioCtx.currentTime, 0.05);
+        olegGain.gain.setTargetAtTime(Math.min(vel / 80, 1), audioCtx.currentTime, 0.05);
+      }
+    }
+    olegReverbGain.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.4);
+    olegDelayGain.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.4);
+    if (olegPlaying && vel <= 2) {
+      olegSource.stop();
+      olegPlaying = false;
+    }
+  } else {
+    if (olegPlaying) {
+      olegSource.stop();
+      olegPlaying = false;
+    }
+    olegGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+    olegReverbGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.4);
+    olegDelayGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.4);
+  }
+}
+
 // --- Record stop ---
 function triggerRecordStop() {
   if (!audioCtx) return;
@@ -716,6 +824,7 @@ function tick() {
   }
 
   updateSax();
+  updateOleg();
   drawYinYang();
   requestAnimationFrame(tick);
 }

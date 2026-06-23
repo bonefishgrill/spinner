@@ -19,7 +19,7 @@ enum SoundType: Int, CaseIterable {
 
     var filename: String {
         switch self {
-        case .voice:     return ""
+        case .voice:     return "06-Oleg Kuular _ Collection of Chöömej Styles"
         case .saxophone: return "01 - dedicated to multi-instrumentalist jack gell"
         case .keyboard:  return "keyboard"
         case .trombone:  return "trombone"
@@ -69,6 +69,8 @@ class SoundEngine: ObservableObject {
     private var bellVoices: [BellVoice] = []
     private var bellsInit = false
     private let bellReverb = AVAudioUnitReverb()
+    private let voiceReverb = AVAudioUnitReverb()
+    private let voiceDelay = AVAudioUnitDelay()
 
     init() {
         #if os(iOS)
@@ -76,7 +78,7 @@ class SoundEngine: ObservableObject {
         try? AVAudioSession.sharedInstance().setActive(true)
         #endif
 
-        for type in SoundType.allCases where type != .voice {
+        for type in SoundType.allCases where !type.filename.isEmpty {
             if let buf = loadBuffer(named: type.filename) {
                 sampleBuffers[type] = trimStart(buf, seconds: 1.0) ?? buf
             }
@@ -238,12 +240,21 @@ class SoundEngine: ObservableObject {
 
         bellReverb.loadFactoryPreset(.cathedral)
         bellReverb.wetDryMix = 0
+        voiceReverb.loadFactoryPreset(.largeChamber)
+        voiceReverb.wetDryMix = 0
+        voiceDelay.delayTime = 0.38
+        voiceDelay.feedback = 40
+        voiceDelay.wetDryMix = 0
         engine.attach(playerNode)
         engine.attach(varispeed)
         engine.attach(synthNode!)
         engine.attach(bellReverb)
+        engine.attach(voiceReverb)
+        engine.attach(voiceDelay)
         engine.connect(playerNode, to: varispeed, format: nil)
-        engine.connect(varispeed, to: engine.mainMixerNode, format: nil)
+        engine.connect(varispeed, to: voiceReverb, format: nil)
+        engine.connect(voiceReverb, to: voiceDelay, format: nil)
+        engine.connect(voiceDelay, to: engine.mainMixerNode, format: nil)
         engine.connect(synthNode!, to: bellReverb, format: monoFormat)
         engine.connect(bellReverb, to: engine.mainMixerNode, format: nil)
         try? engine.start()
@@ -253,6 +264,8 @@ class SoundEngine: ObservableObject {
         let vel = abs(velocity)
         let hasSample = sampleBuffers[soundType] != nil
         bellReverb.wetDryMix = soundType == .bells ? 70 : 0
+        voiceReverb.wetDryMix = soundType == .voice ? 50 : 0
+        voiceDelay.wetDryMix = soundType == .voice ? 35 : 0
 
         if hasSample {
             synthVelocity = 0
@@ -433,9 +446,6 @@ struct ContentView: View {
                                     if dt > 0 { angularVelocity = delta / dt }
                                     rotation += delta
                                     lastDragTime = now
-                                    if selectedSound == .voice && abs(angularVelocity) > 30 {
-                                        speak(velocity: angularVelocity)
-                                    }
                                 } else {
                                     lastDragTime = Date()
                                 }

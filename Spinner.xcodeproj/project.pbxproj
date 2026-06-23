@@ -7,12 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7EE9D8F12FEB29490096AACA /* 02 Changes Where Bell Number = Repeat Number.m4a in Resources */ = {isa = PBXBuildFile; fileRef = 7EE9D8F02FEB29490096AACA /* 02 Changes Where Bell Number = Repeat Number.m4a */; };
+		7EE9D8F32FEB29720096AACA /* 06-Oleg Kuular _ Collection of Chöömej Styles.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 7EE9D8F22FEB29720096AACA /* 06-Oleg Kuular _ Collection of Chöömej Styles.mp3 */; };
 		83CBBA091A601CBA00E9B192 /* SpinnerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CBBA051A601CBA00E9B192 /* SpinnerApp.swift */; };
 		83CBBA0A1A601CBA00E9B192 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CBBA061A601CBA00E9B192 /* ContentView.swift */; };
 		83CBBA0B1A601CBA00E9B192 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 83CBBA071A601CBA00E9B192 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		7EE9D8F02FEB29490096AACA /* 02 Changes Where Bell Number = Repeat Number.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = "02 Changes Where Bell Number = Repeat Number.m4a"; sourceTree = "<group>"; };
+		7EE9D8F22FEB29720096AACA /* 06-Oleg Kuular _ Collection of Chöömej Styles.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "06-Oleg Kuular _ Collection of Chöömej Styles.mp3"; sourceTree = "<group>"; };
 		83CBBA051A601CBA00E9B192 /* SpinnerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinnerApp.swift; sourceTree = "<group>"; };
 		83CBBA061A601CBA00E9B192 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		83CBBA071A601CBA00E9B192 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -51,6 +55,8 @@
 			children = (
 				83CBBA051A601CBA00E9B192 /* SpinnerApp.swift */,
 				83CBBA061A601CBA00E9B192 /* ContentView.swift */,
+				7EE9D8F02FEB29490096AACA /* 02 Changes Where Bell Number = Repeat Number.m4a */,
+				7EE9D8F22FEB29720096AACA /* 06-Oleg Kuular _ Collection of Chöömej Styles.mp3 */,
 				83CBBA071A601CBA00E9B192 /* Assets.xcassets */,
 			);
 			path = Spinner;
@@ -115,6 +121,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				83CBBA0B1A601CBA00E9B192 /* Assets.xcassets in Resources */,
+				7EE9D8F12FEB29490096AACA /* 02 Changes Where Bell Number = Repeat Number.m4a in Resources */,
+				7EE9D8F32FEB29720096AACA /* 06-Oleg Kuular _ Collection of Chöömej Styles.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
