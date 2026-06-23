@@ -512,7 +512,7 @@ function ensureAudio() {
 
     let targetAmp = 0;
     if (isKeys) {
-      targetAmp = infiniteMode ? 0.35 : Math.min(vel / 120, 0.5);
+      targetAmp = infiniteMode ? 0.14 : Math.min(vel / 120, 0.18);
     } else if (isBone) {
       targetAmp = Math.min(vel / 300, 0.45);
     }
@@ -541,7 +541,7 @@ function ensureAudio() {
     }
 
     for (let i = 0; i < output.length; i++) {
-      const smoothing = isKeys ? (targetAmp > synth.amp ? 0.03 : 0.015) : 0.002;
+      const smoothing = isKeys ? (targetAmp > synth.amp ? 0.006 : 0.004) : 0.002;
       synth.amp += (targetAmp - synth.amp) * smoothing;
 
       let s = 0;
@@ -568,12 +568,12 @@ function ensureAudio() {
           mix += (saw * 0.5 + pulse * 0.5) * 0.25;
         }
 
-        const cutoff = 0.15 + synth.amp * 0.3;
+        const cutoff = 0.05 + synth.amp * 0.12;
         synth.filterState += cutoff * (mix - synth.filterState);
         s = synth.filterState * synth.amp;
 
         if (infiniteMode) {
-          synth.keysMelodyAmp += (0.09 - synth.keysMelodyAmp) * 0.0008;
+          synth.keysMelodyAmp += (0.035 - synth.keysMelodyAmp) * 0.0008;
           synth.keysMelodyPhase += INF_MELODY[synth.keysMelodyIdx] / sr;
           if (synth.keysMelodyPhase >= 1) synth.keysMelodyPhase -= 1;
           s += Math.sin(2 * Math.PI * synth.keysMelodyPhase) * synth.keysMelodyAmp;
@@ -857,7 +857,7 @@ function tick() {
   }
 
   if (synthReverbSend && audioCtx) {
-    const keysWet = (infiniteMode && selectedSound === 'keyboard') ? 0.45 : 0;
+    const keysWet = (infiniteMode && selectedSound === 'keyboard') ? 0.72 : selectedSound === 'keyboard' ? 0.35 : 0;
     synthReverbSend.gain.setTargetAtTime(keysWet, audioCtx.currentTime, 0.4);
     const bellWet = selectedSound === 'bells' ? 0.72 : 0;
     bellReverbSend.gain.setTargetAtTime(bellWet, audioCtx.currentTime, 0.6);
