@@ -400,7 +400,7 @@ function ensureAudio() {
       } else if (isBubbles) {
         synth.bubbleTimer--;
         if (vel > 5 && synth.bubbleTimer <= 0) {
-          const rate = Math.min(vel / 25, 25);
+          const rate = infiniteMode ? Math.min(vel / 150, 2) : Math.min(vel / 25, 25);
           synth.bubbleTimer = Math.floor(sr / rate * (0.5 + Math.random() * 0.5));
           synth.bubbles.push({ phase: 0, freq: 120 + Math.random() * 400, amp: 0.18 + Math.random() * 0.12, decay: 0.9988 + Math.random() * 0.0008 });
         }
