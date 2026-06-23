@@ -112,10 +112,10 @@
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div class="inf-toggle" id="infToggle">
+  <div class="inf-toggle active" id="infToggle">
     <label for="infCheck">∞</label>
     <label class="inf-switch">
-      <input type="checkbox" id="infCheck">
+      <input type="checkbox" id="infCheck" checked>
       <div class="inf-switch-track"></div>
       <div class="inf-switch-thumb"></div>
     </label>
@@ -138,7 +138,7 @@ let lastAngle = null;
 let lastDragTime = 0;
 let selectedSound = 'saxophone';
 let audioCtx = null;
-let infiniteMode = false;
+let infiniteMode = true;
 let lfoPhase1 = 0, lfoPhase2 = 0, lfoPhase3 = 0;
 let infiniteVel = 150;
 
