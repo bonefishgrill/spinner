@@ -345,19 +345,22 @@ let bellReverbGain = null;
 
 function ensureAudio() {
   appStarted = true;
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // iOS unlock: play a silent buffer immediately inside the gesture
-    const unlock = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
-    const unlockSrc = audioCtx.createBufferSource();
-    unlockSrc.buffer = unlock;
-    unlockSrc.connect(audioCtx.destination);
-    unlockSrc.start(0);
+  if (audioCtx) { if (audioCtx.state === 'suspended') audioCtx.resume(); return; }
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 
-    // Decode pre-fetched sax
+  // iOS unlock
+  const unlock = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+  const unlockSrc = audioCtx.createBufferSource();
+  unlockSrc.buffer = unlock;
+  unlockSrc.connect(audioCtx.destination);
+  unlockSrc.start(0);
+
+  // Decode pre-fetched sax
   _saxFetch
     .then(buf => buf && audioCtx.decodeAudioData(buf))
     .then(decoded => {
+      if (!decoded) return;
       // Trim first 1 second
       const skipFrames = Math.floor(decoded.sampleRate * 1);
       const remaining = decoded.length - skipFrames;
@@ -387,9 +390,10 @@ function ensureAudio() {
     .catch(e => console.warn('Failed to load sax audio:', e));
 
     // Decode pre-fetched oleg
-    _olegFetch
+  _olegFetch
     .then(buf => buf && audioCtx.decodeAudioData(buf))
     .then(decoded => {
+      if (!decoded) return;
       const skipFrames = Math.floor(decoded.sampleRate * 1);
       const remaining = decoded.length - skipFrames;
       const trimmed = audioCtx.createBuffer(decoded.numberOfChannels, remaining, decoded.sampleRate);
@@ -731,8 +735,6 @@ function ensureAudio() {
 
   // Store synth ref for record stop
   synthProcessor._synth = synth;
-  } // end if (!audioCtx)
-  if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 // --- Sax playback ---
