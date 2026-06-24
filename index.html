@@ -483,9 +483,16 @@ function ensureAudio() {
   saxDelay.connect(saxDelayGain);
   saxDelayGain.connect(audioCtx.destination);
 
-  // Synth via ScriptProcessor
+  // Synth via ScriptProcessor — must have ≥1 input or onaudioprocess won't fire on mobile Safari/Chrome
   const BLOCK = 2048;
-  synthProcessor = audioCtx.createScriptProcessor(BLOCK, 0, 1);
+  synthProcessor = audioCtx.createScriptProcessor(BLOCK, 1, 1);
+  const _synthKeepAlive = audioCtx.createConstantSource();
+  const _synthSilence = audioCtx.createGain();
+  _synthSilence.gain.value = 0;
+  _synthKeepAlive.offset.value = 0;
+  _synthKeepAlive.connect(_synthSilence);
+  _synthSilence.connect(synthProcessor);
+  _synthKeepAlive.start();
 
   // Synth state
   const synth = {
