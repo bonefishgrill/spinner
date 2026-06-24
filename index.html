@@ -541,7 +541,9 @@ function ensureAudio() {
   synthProcessor.onaudioprocess = function(e) {
     const output = e.outputBuffer.getChannelData(0);
     const sr = audioCtx.sampleRate;
-    const vel = infiniteMode ? Math.max(Math.abs(angularVelocity), infiniteVel) : Math.abs(angularVelocity);
+    const vel = infiniteMode
+      ? (isDragging ? Math.max(Math.abs(angularVelocity) * 3, 5) : infiniteVel)
+      : Math.abs(angularVelocity);
     const sound = selectedSound;
     const isKeys = sound === 'keyboard';
     const isBone = sound === 'trombone';
@@ -551,7 +553,7 @@ function ensureAudio() {
 
     let targetAmp = 0;
     if (isKeys) {
-      targetAmp = infiniteMode ? 0.14 : Math.min(vel / 120, 0.18);
+      targetAmp = infiniteMode ? 0.14 * Math.min(vel / 120, 1) : Math.min(vel / 120, 0.18);
     } else if (isBone) {
       targetAmp = Math.min(vel / 300, 0.45);
     }
@@ -671,7 +673,7 @@ function ensureAudio() {
             synth.bells[v].freq = BELL_FREQS[Math.floor(Math.random() * BELL_FREQS.length)];
           }
         }
-        const bellVol = infiniteMode ? 1.0 : Math.min(vel / 80, 1.0);
+        const bellVol = infiniteMode ? Math.min(vel / 120, 1.0) : Math.min(vel / 80, 1.0);
         for (let v = 0; v < synth.bells.length; v++) {
           const bv = synth.bells[v];
           bv.timer--;
