@@ -511,7 +511,7 @@ function ensureAudio() {
     waterNoise: 0,
     // Ambient pad (Bubbles infinite mode)
     padPhases: [0, 0, 0, 0, 0, 0],
-    padLfoPhase: 0,
+    padLfoPhases: [0, 0, 0],
     padAmp: 0,
     // Bell (Afternoon) voices
     bells: Array.from({length: 8}, () => ({ phase: Math.random(), freq: 130.81, amp: 0, target: 0, timer: Math.floor(Math.random() * 176400) })),
@@ -655,15 +655,21 @@ function ensureAudio() {
         const padTarget = infiniteMode ? 0.13 : 0;
         synth.padAmp += (padTarget - synth.padAmp) * 0.0002;
         if (synth.padAmp > 0.0001) {
-          synth.padLfoPhase += 0.07 / sr;
-          if (synth.padLfoPhase >= 1) synth.padLfoPhase -= 1;
-          const padMod = 0.6 + 0.4 * Math.sin(2 * Math.PI * synth.padLfoPhase);
-          // Detuned A-major pairs — glass-bowl shimmer, not bells
+          // Each pair (A3, E4, A4) breathes at its own rate
+          const padLfoRates = [0.05, 0.083, 0.11];
+          for (let l = 0; l < 3; l++) {
+            synth.padLfoPhases[l] += padLfoRates[l] / sr;
+            if (synth.padLfoPhases[l] >= 1) synth.padLfoPhases[l] -= 1;
+          }
           const padFreqs = [219.8, 220.5, 329.7, 330.6, 440.0, 441.3];
           for (let p = 0; p < 6; p++) {
-            synth.padPhases[p] += padFreqs[p] / sr;
+            const lfoIdx = p >> 1;
+            const lfoVal = 0.5 + 0.5 * Math.sin(2 * Math.PI * synth.padLfoPhases[lfoIdx]);
+            const drift = Math.sin(2 * Math.PI * (synth.padLfoPhases[lfoIdx] * 1.4 + p * 0.3)) * 0.0025;
+            const freq = padFreqs[p] * (1 + drift);
+            synth.padPhases[p] += freq / sr;
             if (synth.padPhases[p] >= 1) synth.padPhases[p] -= 1;
-            s += Math.sin(2 * Math.PI * synth.padPhases[p]) * synth.padAmp * 0.55 * padMod;
+            s += Math.sin(2 * Math.PI * synth.padPhases[p]) * synth.padAmp * 0.55 * lfoVal;
           }
         }
       } else if (isBells) {
